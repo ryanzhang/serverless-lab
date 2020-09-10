@@ -160,6 +160,10 @@ apiserversources                sources.knative.dev   true         ApiServerSour
 pingsources                     sources.knative.dev   true         PingSource
 sinkbindings                    sources.knative.dev   true         SinkBinding
 ```
+
+**注意事项
+请检查 你当前的namespace是否是 serverlesslab3, 如果使用不同的名称，需要改lab3里面的脚本**
+
 ## 模式1 source 直接触发 Service 
 * 第一步定义 source 和sink
 ```
@@ -292,12 +296,88 @@ for i in lab3/2*.yaml;do kubectl delete -f $i; done
 ```
 kubectl create ns serverlesslab4
 ```
-## 使用kafka进行事件保存与订阅
-* 第一步 安装kafkaSource
+
+
+**注意事项
+请检查 你当前的namespace是否是 serverlesslab4, 如果使用不同的名称，需要改lab4里面的脚本**
+
+## 安装kafkaSource
+* 第一步 安装strimiz + knative kafkachannel组件
+如果已经安装了，请忽略这个步骤
+```
+kubectl create ns kafka
+kubectl apply -f lab4/installkafka/kafka-source.yaml
+kubectl apply -f lab4/installkafka/kafka-channel.yaml
+```
+* 第二步 检查kafkaSource是否安装好
+```
+kubectl api-resources --api-group='sources.knative.dev'
+kubectl api-resources --api-group='sources.knative.dev'
+NAME               SHORTNAMES   APIGROUP              NAMESPACED   KIND
+apiserversources                sources.knative.dev   true         ApiServerSource
+camelsources                    sources.knative.dev   true         CamelSource
+kafkasources                    sources.knative.dev   true         KafkaSource
+pingsources                     sources.knative.dev   true         PingSource
+sinkbindings                    sources.knative.dev   true         SinkBinding
+
+kubectl api-resources --api-group='messaging.knative.dev'
+NAME               SHORTNAMES   APIGROUP                NAMESPACED   KIND
+channels           ch           messaging.knative.dev   true         Channel
+inmemorychannels   imc          messaging.knative.dev   true         InMemoryChannel
+kafkachannels      kc           messaging.knative.dev   true         KafkaChannel
+subscriptions      sub          messaging.knative.dev   true         Subscription
+```
+* 第二步 把当前namespace配置为 默认使用kafkaChannel为knative Channel
+```
+kubectl apply -f lab4/01-default-channel-config.yaml
+```
+* 第三步 测试创建一个knative channel
+```
+kubectl apply -f lab4/02-my-events-channel
+```
+* 第四步 验证 kafkaChannel已经创建
+```
+kubectl get channels
+kubectl get kafkachannels
+bin/kafka-list-topics
+# 删除调刚才创建的my-event-ch
+kubectl delete channels my-events-ch
+bin/kafka-list-topics
+```
+## 使用kafka进行事件转发与订阅
+* 第一步 创建ksvc
+```
+kubectl apply -f lab4/11-eventing-hello-service.yaml
+```
+* 第二步 创建一个kafkaTopic
+```
+kubectl apply -f lab4/12-kafka-topic-my-topic.yaml
+```
+* 第三步 创建一个KafkaSource 并且直接链接(Sink)到新建的服务上
+```
+kubectl apply -f lab4/13-mykafka-source.yaml
+```
+* 第四步 测试
+连接到kafkaTopic: my-topic上面，发送数据，然后观察eventing hello服务被调起
+
+打开两个三个终端，分别命令:
+
+```
+#Terminal1
+stern eventinghello -c user-container 
+>观察eventinghello k服务被调起 并且显示 POST: Terminal2中键入的消息
 ```
 
 ```
-* 第二步 
+#Terminal2
+lab4/bin/kafka-producer.sh 
+>然后键入消息
+```
+```
+#Terminal3
+lab4/bin/kafka-consumer.sh 
+>监控my-topic中的消息
+```
 
 
 
