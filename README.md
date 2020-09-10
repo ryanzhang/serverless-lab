@@ -15,7 +15,7 @@ https://console-openshift-console.apps.ocp4-beijing-df27-ipi.azure.opentlc.com
 |tkn| https://mirror.openshift.com/pub/openshift-v4/clients/pipeline/0.9.0/tkn-linux-amd64-0.9.0.tar.gz|source <(tkn completion bash)
 
 # 实验 1 knative serving 自动伸缩实验
-oc new-project serverlesslab1
+kubectl create ns serverlesslab1
 
 检查 serving api
 kubectl api-resources --api-group serving.knative.dev
@@ -94,8 +94,19 @@ kubectl get sa pipeline
 因为image push需要用到namespace名称
 ## 定义一个Pipeline 
 从源代码编译 到 serverless部署
-
- * 第一步 Pipeline 三要素
+### RTP
+定义一个原生Pipeline就是定义Resource, Task, Pipeline
+### Resource
+    * Type -类型， 包括: git; image
+    * Params - 参数
+### Task RPS
+    * Resources: 绑定资源参数
+    * Params: 额外参数 
+    * Steps: 步骤 类似Ansible Command
+### Pipeline
+    * Resources
+    * TaskRef
+ * 第一步 Pipeline 三要素 
  ```
     kubectl apply -f lab2/01_apply_manifest_task.yaml
     kubectl apply -f lab2/02_update_deployment_task.yaml
@@ -104,11 +115,17 @@ kubectl get sa pipeline
 
 ```
  * 第二步 手动触发Pipeline
- 
+ ```
  tkn pipeline start build-and-deploy
-填参数
+ >填参数
+```
 
 ## Git push 自动触发 pipeline 运行
+### TBL
+* TriggerTemplate 就是把 PipelineResource 参数化
+* TriigerBinding 就是把 把git push event 和TriggerTemplate厘米的参数 进行绑定
+* EventListener 就是接受git push event然后实例化pipelineresource 并且启动pipelinerun
+### 实验步骤
     * 第一步配置Trigger Template + 模板
 ```
     kubectl apply -f lab2/11_trigger_template.yaml 
@@ -128,13 +145,159 @@ kubectl get sa pipeline
 ```
     把 http://vote-ui-serverlesslab2.apps.ocp4-beijing-df27-ipi.azure.opentlc.com 配置到对应的webhook上面 以便接受git push的事件
 
-
 # 实验 3 knative eventing I
-
+在这个实验中，学习knative eventing 接收，保存，转发，订阅,路由
+```
+kubectl create ns serverlesslab3
+```
+## 确认knative eventing api
+```bash
+kubectl api-resources --api-group='sources.knative.dev'
+```
+默认安装的是
+```NAME               SHORTNAMES   APIGROUP              NAMESPACED   KIND
+apiserversources                sources.knative.dev   true         ApiServerSource
+pingsources                     sources.knative.dev   true         PingSource
+sinkbindings                    sources.knative.dev   true         SinkBinding
+```
 ## 模式1 source 直接触发 Service 
+* 第一步定义 source 和sink
+```
+source 和sink是配对出现的
+Sink 可以是一个k服务,也可以是一个k Channel 这里我们定义一个k服务为sink
+kubectl apply -f lab3/01-eventinghello-ping-source.yaml
+```
+* 第二步定义k服务
+```
+kubectl apply -f lab3/02-eventinghello-service.yaml
+```
+* 第三步 观察eventing 触发 kservice
+```
+#观察Cloud event的原数据信息
+stern eventinghello -c user-container
+```
+* 清理
+```
+kn source list
+kn source ping delete eventinghello-ping-source
+```
 ## 模式2 使用Channel保存和群发(订阅)消息
-## 模式3 使用Broker 基于元数据分发消息
+* 第一步创建Source,将事件发送到Channel
+```
+kubectl apply -f lab3/11-eventing-source.yaml
+```
+* 第二步创建Channel 用来保存事件
+```
+# Channel可以是memoryChannel，也可以是kafkaChannel，这里我们定义一个memoryChannel
+kubectl apply -f lab3/12-eventing-channel.yaml 
+```
+* 第三步创建服务 
+```
+kubectl apply -f lab3/13-eventing-helloa-service.yaml
+kubectl apply -f lab3/13-eventing-hellob-service.yaml
+```
+* 第四步 创建Subscription 定与Channel中的消息
+```
+kubectl apply -f lab3/14-eventing-helloa-sub.yaml
+kubectl apply -f lab3/14-eventing-hellob-sub.yaml
+```
 
+* 第五步 
+```
+#观察行为
+stern eventinghello -c user-container
+```
+* 清理
+```
+...
+k delete -f lab3/12-eventing-channel.yaml
+k delete -f lab3/14-eventing-helloa-sub.yaml 
+k delete -f lab3/14-eventing-hellob-sub.yaml 
+
+```
+
+## 模式3 使用Broker 基于元数据分发消息
+knative 支持创建Broker 实现简单的基于CloudEvent元数据的内容分发路由
+* 第一步 激活eventing的默认路由
+```
+#这个是对namespace域起作用的
+kubectl label ns serverlesslab3 knative-eventing-injection=enabled
+#执行完了之后，可以看到有一个默认的broker创建,并且会创建两个pod: default-broker-filter+ default-broker-ingress
+kubectl get broker
+
+#expose 外部route 这样我们可以给broker发 cloudevent用来测试
+oc expose svc default-broker
+
+```
+* 第二步 部署两个ksvc
+```
+kubectl apply -f lab3/21-eventing-aloha-service.yaml
+kubectl apply -f lab3/21-eventing-bonjour-service.yaml
+```
+
+* 第三步  部署Trigger
+Eventing Trigger 就是用来定义 过滤条件的，它的Controller已经在第一步部署上了，就是default-broker-filter
+```
+kubectl apply -f lab3/22-trigger-helloaloha.yaml 
+kubectl apply -f lab3/22-trigger-hellobonjour.yaml
+```
+* 第四步 发送CloudEvent
+```
+#ROUTE_HELLOA
+#ROUTE_HELLOB
+#ROUTE_BROKER
+#测试1 直接给HelloA 发送http请求
+curl -v "${ROUTE_HELLOA}" \
+-X POST \
+-H "Ce-Id: say-hello" \
+-H "Ce-Specversion: 1.0" \
+-H "Ce-Type: aloha" \
+-H "Ce-Source: mycurl" \
+-H "Content-Type: application/json" \
+-d '{"message":"from a curl"}'
+
+#测试2 直接给HelloB 发送http 请求
+curl -v "${ROUTE_HELLOB}" \
+-X POST \
+-H "Ce-Id: say-hello" \
+-H "Ce-Specversion: 1.0" \
+-H "Ce-Type: bonjour" \
+-H "Ce-Source: mycurl" \
+-H "Content-Type: application/json" \
+-d '{"message":"from a curl"}'
+
+#测试3 给default-broker发送一个CloudEvent
+curl -v "${ROUTE_BROKER}" \
+-X POST \
+-H "Ce-Id: say-hello" \
+-H "Ce-Specversion: 1.0" \
+-H "Ce-Type: greeting" \
+-H "Ce-Source: mycurl" \
+-H "Content-Type: application/json" \
+-d '{"message":"from a curl"}'
+
+```
+
+清理
+```
+for i in lab3/2*.yaml;do kubectl delete -f $i; done
+```
 # 实验 4 knative evening II(使用kafka存储消息)
+上面的实验，我们已经练习了如何使用Channel, Subscription, Broker, Trigger来控制事件的存储，订阅，分发. 这基本上已经覆盖了当前knative eventing 的功能。 
+
+但是在生产中，为了消息保存的健壮性和持久性， 我们往往希望使用kafka来存储消息。
+下面我们要使用knative的扩展功能 kafkaSource
+
+创建一个新的命名空间
+```
+kubectl create ns serverlesslab4
+```
 ## 使用kafka进行事件保存与订阅
+* 第一步 安装kafkaSource
+```
+
+```
+* 第二步 
+
+
 
