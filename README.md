@@ -1,7 +1,4 @@
 # 实验环境准备
-Openshift 4.4 (kubernets 1.17) 
-
-https://console-openshift-console.apps.ocp4-beijing-df27-ipi.azure.opentlc.com
 
 
 客户端 for linux: 
@@ -77,11 +74,10 @@ kn service update prime-generator \
 ```
 
 清理本实验
-
+```
 kubectl delete ksvc greeter
-
 kubectl delete ksvc prime-generator
-
+```
 # 实验 2 knative pipeline
 kubectl create ns  servelesslab2
 
@@ -165,6 +161,7 @@ sinkbindings                    sources.knative.dev   true         SinkBinding
 请检查 你当前的namespace是否是 serverlesslab3, 如果使用不同的名称，需要改lab3里面的脚本**
 
 ## 模式1 source 直接触发 Service 
+![1-event-direct.png](image/1-event-direct.png "Event direct")
 * 第一步定义 source 和sink
 ```
 source 和sink是配对出现的
@@ -186,6 +183,8 @@ kn source list
 kn source ping delete eventinghello-ping-source
 ```
 ## 模式2 使用Channel保存和群发(订阅)消息
+![2-channels-subs](image/2-cnannels-subs.png "Channels-Subscription Mode")
+
 * 第一步创建Source,将事件发送到Channel
 ```
 kubectl apply -f lab3/11-eventing-source.yaml
@@ -221,6 +220,8 @@ k delete -f lab3/14-eventing-hellob-sub.yaml
 ```
 
 ## 模式3 使用Broker 基于元数据分发消息
+![2-broker-trigger](image/3-broker-trigger.svg "Broker Trigger Mode")
+
 knative 支持创建Broker 实现简单的基于CloudEvent元数据的内容分发路由
 * 第一步 激活eventing的默认路由
 ```
