@@ -89,9 +89,12 @@ kubectl create ns  servelesslab2
 
 kubectl get sa pipeline
 
-kubectl get sa pipeline
+注意事项
+请检查 你当前的namespace是否是 serverlesslab2, 如果使用不同的名称，需要改lab2里面的脚本
+因为image push需要用到namespace名称
 ## 定义一个Pipeline 
 从源代码编译 到 serverless部署
+
  * 第一步 Pipeline 三要素
  ```
     kubectl apply -f lab2/01_apply_manifest_task.yaml
@@ -103,12 +106,31 @@ kubectl get sa pipeline
  * 第二步 手动触发Pipeline
  
  tkn pipeline start build-and-deploy
-
 填参数
 
 ## Git push 自动触发 pipeline 运行
+    * 第一步配置Trigger Template + 模板
+```
+    kubectl apply -f lab2/11_trigger_template.yaml 
+    kubectl apply -f lab2/12_trigger_binding.yaml
+```
+    * 第二步 配置Event listener，监听来自git repo的事件
+
+```bash
+    kubectl apply -f lab2/13_event_listener.yaml 
+```
+    * 第三步 给git repo 配置webhook
+
+```bash
+    oc expose svc el-vote-app
+    oc get route
+    git commit -m "empty-commit" --allow-empty
+```
+    把 http://vote-ui-serverlesslab2.apps.ocp4-beijing-df27-ipi.azure.opentlc.com 配置到对应的webhook上面 以便接受git push的事件
+
 
 # 实验 3 knative eventing I
+
 ## 模式1 source 直接触发 Service 
 ## 模式2 使用Channel保存和群发(订阅)消息
 ## 模式3 使用Broker 基于元数据分发消息

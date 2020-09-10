@@ -1,0 +1,89 @@
+apiVersion: tekton.dev/v1beta1
+kind: ClusterTask
+metadata:
+  annotations:
+    manifestival: new
+  creationTimestamp: "2020-09-07T09:53:00Z"
+  generation: 1
+  labels:
+    operator.tekton.dev/provider-type: community
+  name: buildah
+  ownerReferences:
+  - apiVersion: operator.tekton.dev/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: Config
+    name: cluster
+    uid: 0bcab6ec-6b07-4acd-bc29-f959a6e0cdfc
+  resourceVersion: "337996"
+  selfLink: /apis/tekton.dev/v1beta1/clustertasks/buildah
+  uid: 6e4b59e8-4b64-48a5-8a26-c1c22c820429
+spec:
+  params:
+  - default: registry.redhat.io/rhel8/buildah
+    description: The location of the buildah builder image.
+    name: BUILDER_IMAGE
+    type: string
+  - default: ./Dockerfile
+    description: Path to the Dockerfile to build.
+    name: DOCKERFILE
+    type: string
+  - default: .
+    description: Path to the directory to use as context.
+    name: CONTEXT
+    type: string
+  - default: "true"
+    description: Verify the TLS on the registry endpoint (for push/pull to a non-TLS
+      registry)
+    name: TLSVERIFY
+    type: string
+  - default: oci
+    description: The format of the built container, oci or docker
+    name: FORMAT
+    type: string
+  resources:
+    inputs:
+    - name: source
+      type: git
+    outputs:
+    - name: image
+      type: image
+  steps:
+  - command:
+    - buildah
+    - bud
+    - --format=$(params.FORMAT)
+    - --tls-verify=$(params.TLSVERIFY)
+    - --layers
+    - -f
+    - $(params.DOCKERFILE)
+    - -t
+    - $(resources.outputs.image.url)
+    - $(params.CONTEXT)
+    image: $(params.BUILDER_IMAGE)
+    name: build
+    resources: {}
+    securityContext:
+      privileged: true
+    volumeMounts:
+    - mountPath: /var/lib/containers
+      name: varlibcontainers
+    workingDir: /workspace/source
+  - command:
+    - buildah
+    - push
+    - --tls-verify=$(params.TLSVERIFY)
+    - $(resources.outputs.image.url)
+    - docker://$(resources.outputs.image.url)
+    image: $(params.BUILDER_IMAGE)
+    name: push
+    resources: {}
+    securityContext:
+      privileged: true
+    volumeMounts:
+    - mountPath: /var/lib/containers
+      name: varlibcontainers
+    workingDir: /workspace/source
+  volumes:
+  - emptyDir: {}
+    name: varlibcontainers
