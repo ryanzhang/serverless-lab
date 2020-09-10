@@ -183,7 +183,7 @@ kn source list
 kn source ping delete eventinghello-ping-source
 ```
 ## 模式2 使用Channel保存和群发(订阅)消息
-![2-channels-subs](image/2-cnannels-subs.png "Channels-Subscription Mode")
+![2-channels-subs](image/2-channels-subs.png "Channels-Subscription Mode")
 
 * 第一步创建Source,将事件发送到Channel
 ```
