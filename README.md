@@ -12,18 +12,19 @@
 |tkn| https://mirror.openshift.com/pub/openshift-v4/clients/pipeline/0.9.0/tkn-linux-amd64-0.9.0.tar.gz|source <(tkn completion bash)
 
 # 实验 1 knative serving 自动伸缩实验
+```
 kubectl create ns serverlesslab1
-
-检查 serving api
+#检查 serving api
 kubectl api-resources --api-group serving.knative.dev
+```
 
 ## 根据Request 进行伸缩
 kubectl apply -f lab1/service.yaml
 
 测试服务已经可以访问，并且自动伸缩为0
-
+```
 hey -c 50 -z 10s '${SVC_URL}/?sleep=3&upto=10000&memload=100'
-
+```
 (注意这里一定要引号，否则bash中无法正确解析&)
 
 检查ksvc/spec/template/metadata/annotations 标记值
@@ -43,15 +44,15 @@ spec:
         autoscaling.knative.dev/target: "10"
 ```
 查看 autoscaler的配置
-
-kubectl -n knativetutorial describe cm config-autoscaler
-
+```
+kubectl  -n knative-serving describe cm config-autoscaler
+```
 使用kn命令行进行操作
-
+```
 kn service create|delete|update 
 
 kubectl edit ksvc svc_name 查看
-
+```
 流量切换
 ```bash
 kn service create greeter --image quay.io/rhdevelopers/knative-tutorial-greeter:quarkus --revision-name greeter-v1
@@ -79,12 +80,14 @@ kubectl delete ksvc greeter
 kubectl delete ksvc prime-generator
 ```
 # 实验 2 knative pipeline
+```
 kubectl create ns  servelesslab2
-
-确认pipeline已经装好
-
+#确认pipeline已经装好
 kubectl get sa pipeline
 
+kubectl api-resources --api-group 'tekton.dev'
+kubectl api-resources --api-group 'triggers.tekton.dev'
+```
 注意事项
 请检查 你当前的namespace是否是 serverlesslab2, 如果使用不同的名称，需要改lab2里面的脚本
 因为image push需要用到namespace名称
@@ -312,7 +315,6 @@ kubectl apply -f lab4/installkafka/kafka-channel.yaml
 ```
 * 第二步 检查kafkaSource是否安装好
 ```
-kubectl api-resources --api-group='sources.knative.dev'
 kubectl api-resources --api-group='sources.knative.dev'
 NAME               SHORTNAMES   APIGROUP              NAMESPACED   KIND
 apiserversources                sources.knative.dev   true         ApiServerSource
