@@ -19,7 +19,7 @@ kubectl api-resources --api-group serving.knative.dev
 ```
 
 ## 根据Request 进行伸缩
-kubectl apply -f lab1/service.yaml
+kubectl apply -f lab1/service-greeting.yaml
 
 测试服务已经可以访问，并且自动伸缩为0
 ```
@@ -79,7 +79,7 @@ kn service update prime-generator \
 kubectl delete ksvc greeter
 kubectl delete ksvc prime-generator
 ```
-# 实验 2 knative pipeline
+# 实验 2 tekton pipeline
 ```
 kubectl create ns  servelesslab2
 #确认pipeline已经装好
@@ -255,7 +255,7 @@ kubectl apply -f lab3/22-trigger-hellobonjour.yaml
 #ROUTE_HELLOB
 #ROUTE_BROKER
 #测试1 直接给HelloA 发送http请求
-curl -v "${ROUTE_HELLOA}" \
+curl -v "$ROUTE_HELLOA" \
 -X POST \
 -H "Ce-Id: say-hello" \
 -H "Ce-Specversion: 1.0" \
@@ -265,7 +265,7 @@ curl -v "${ROUTE_HELLOA}" \
 -d '{"message":"from a curl"}'
 
 #测试2 直接给HelloB 发送http 请求
-curl -v "${ROUTE_HELLOB}" \
+curl -v "$ROUTE_HELLOB" \
 -X POST \
 -H "Ce-Id: say-hello" \
 -H "Ce-Specversion: 1.0" \
@@ -275,7 +275,7 @@ curl -v "${ROUTE_HELLOB}" \
 -d '{"message":"from a curl"}'
 
 #测试3 给default-broker发送一个CloudEvent
-curl -v "${ROUTE_BROKER}" \
+curl -v "$ROUTE_BROKER" \
 -X POST \
 -H "Ce-Id: say-hello" \
 -H "Ce-Specversion: 1.0" \
