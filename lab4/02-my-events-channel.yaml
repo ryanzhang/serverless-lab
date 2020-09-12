@@ -1,6 +1,6 @@
 apiVersion: messaging.knative.dev/v1beta1
 kind: Channel
 metadata:
-  name: my-events-ch
+  name: my-events-kch
   namespace: serverlesslab4
 spec: {}

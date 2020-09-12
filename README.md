@@ -336,16 +336,16 @@ kubectl apply -f lab4/01-default-channel-config.yaml
 ```
 * 第三步 测试创建一个knative channel
 ```
-kubectl apply -f lab4/02-my-events-channel
+kubectl apply -f lab4/02-my-events-channel.yaml
 ```
 * 第四步 验证 kafkaChannel已经创建
 ```
 kubectl get channels
 kubectl get kafkachannels
-bin/kafka-list-topics
+bin/kafka-list-topics.sh
 # 删除调刚才创建的my-event-ch
 kubectl delete channels my-events-ch
-bin/kafka-list-topics
+bin/kafka-list-topics.sh
 ```
 ## 使用kafka进行事件转发与订阅
 * 第一步 创建ksvc
